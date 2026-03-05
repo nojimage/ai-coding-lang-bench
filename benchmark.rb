@@ -24,6 +24,7 @@ LANGUAGES = {
   'javascript'  => { exts: %w[js],     version_cmd: 'node --version' },
   'java'        => { exts: %w[java],   version_cmd: 'java --version 2>&1 | head -1' },
   'perl'        => { exts: %w[pl pm],  version_cmd: 'perl --version | head -2 | tail -1' },
+  'php'         => { exts: %w[php],    version_cmd: 'php --version | head -1' },
   'python'      => { exts: %w[py],     version_cmd: 'python3 --version' },
   'python/mypy' => { exts: %w[py],     version_cmd: 'python3 --version && mypy --version',
                      extra_prompt: 'Write fully type-annotated Python code. All functions must have complete type hints. ' \
