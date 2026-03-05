@@ -49,6 +49,7 @@ selected_languages = nil
 selected_trials = TRIALS
 selected_start = 1
 dry_run = false
+isolate_home = false
 
 i = 0
 while i < ARGV.length
@@ -64,6 +65,9 @@ while i < ARGV.length
     i += 2
   when '--dry-run'
     dry_run = true
+    i += 1
+  when '--isolate-home'
+    isolate_home = true
     i += 1
   else
     i += 1
@@ -164,13 +168,25 @@ rescue JSON::ParserError => e
   nil
 end
 
-def run_claude(prompt, dir:, log_path: nil)
+def run_claude(prompt, dir:, log_path: nil, isolate_home: false)
   env_prefix = "unset CLAUDECODE && export PATH=#{extra_path}:$PATH && "
   cmd = "#{env_prefix}claude -p #{Shellwords.escape(prompt)} --dangerously-skip-permissions --output-format json"
 
   puts "  Running Claude..."
+  original_home = ENV['HOME']
+  if isolate_home
+    fake_home = File.join(BASE_DIR, 'isolate-home')
+    unless File.directory?(fake_home)
+      abort "ERROR: #{fake_home} does not exist. Run: HOME=#{fake_home} claude to set up authentication."
+    end
+    ENV['HOME'] = fake_home
+  end
   start_time = Time.now
-  result = run_cmd(cmd, dir: dir, timeout: 1200)
+  begin
+    result = run_cmd(cmd, dir: dir, timeout: 1200)
+  ensure
+    ENV['HOME'] = original_home
+  end
   elapsed = Time.now - start_time
 
   if log_path
@@ -220,6 +236,7 @@ claude_version = claude_version_result[:stdout].strip
 puts "Claude Version: #{claude_version}"
 puts "Languages: #{languages_to_run.join(', ')}"
 puts "Trials: #{selected_start}..#{selected_start + selected_trials - 1} (#{selected_trials} trials)"
+puts "Isolate HOME: #{isolate_home}"
 puts "Dry run: #{dry_run}"
 puts
 
@@ -243,7 +260,7 @@ unless dry_run
   puts '--- Warmup ---'
   warmup_dir = File.join(WORK_DIR, '.warmup')
   FileUtils.mkdir_p(warmup_dir)
-  warmup_result = run_claude('Respond with just the word OK.', dir: warmup_dir)
+  warmup_result = run_claude('Respond with just the word OK.', dir: warmup_dir, isolate_home: isolate_home)
   puts "  Warmup done in #{warmup_result[:elapsed_seconds]}s (success=#{warmup_result[:success]})"
   FileUtils.rm_rf(warmup_dir)
   puts
@@ -289,7 +306,7 @@ selected_trials.times do |trial_idx|
       record[:v1_time] = 0
     else
       v1_log = File.join(LOGS_DIR, "minigit-#{dir_name}-#{trial}-v1.json")
-      v1_result = run_claude(v1_prompt, dir: v1_dir, log_path: v1_log)
+      v1_result = run_claude(v1_prompt, dir: v1_dir, log_path: v1_log, isolate_home: isolate_home)
       record[:v1_time] = v1_result[:elapsed_seconds]
       record[:v1_claude] = v1_result[:claude_data]
       puts "  Claude finished in #{v1_result[:elapsed_seconds]}s (success=#{v1_result[:success]})"
@@ -322,7 +339,7 @@ selected_trials.times do |trial_idx|
       record[:v2_time] = 0
     else
       v2_log = File.join(LOGS_DIR, "minigit-#{dir_name}-#{trial}-v2.json")
-      v2_result = run_claude(v2_prompt, dir: v2_dir, log_path: v2_log)
+      v2_result = run_claude(v2_prompt, dir: v2_dir, log_path: v2_log, isolate_home: isolate_home)
       record[:v2_time] = v2_result[:elapsed_seconds]
       record[:v2_claude] = v2_result[:claude_data]
       puts "  Claude finished in #{v2_result[:elapsed_seconds]}s (success=#{v2_result[:success]})"
