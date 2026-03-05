@@ -133,6 +133,13 @@ python3 plot.py                             # Generate figures/*.png
 
 Requirements: Ruby, Claude Code CLI (`claude`), and the target language toolchains.
 
+To isolate Claude Code from your personal configuration, use the `--isolate-home` option. This sets `HOME` to an `isolate-home` directory under the project root. You need to set up authentication first:
+
+```bash
+HOME=$(pwd)/isolate-home claude   # Run /login to authenticate
+ruby benchmark.rb --isolate-home  # Run with isolated HOME
+```
+
 ### Repository Structure
 
 - **`main` branch**: Benchmark tools, specs, tests, results, and figures
